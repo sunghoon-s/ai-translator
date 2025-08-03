@@ -1,11 +1,28 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/translate.js", "use": "@vercel/node" },
-    { "src": "public/index.html", "use": "@vercel/static" }
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
   ],
   "routes": [
-    { "src": "/api/translate", "dest": "api/translate.js" },
-    { "src": "/", "dest": "public/index.html" }
-  ]
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ],
+  "functions": {
+    "api/translate.js": {
+      "maxDuration": 30
+    }
+  }
 }

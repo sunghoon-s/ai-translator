@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 번역기</title>
+    <title>AI 자동 감지 번역기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -116,10 +116,7 @@
                     <h2><i class="fas fa-keyboard mr-2 text-blue-500"></i>번역할 내용 (자동 언어 감지)</h2>
                 </div>
                 <div class="panel-body">
-                    <textarea id="source-text-input" rows="5" placeholder="한국어, 영어, 일본어, 중국어로 내용을 입력하세요..." maxlength="5000"></textarea>
-                    <div class="text-sm text-gray-500 mt-2">
-                        <span id="char-count">0</span>/5000자
-                    </div>
+                    <textarea id="source-text-input" rows="5" placeholder="한국어, 영어, 일본어, 중국어로 내용을 입력하세요..."></textarea>
                 </div>
             </div>
 
@@ -186,7 +183,6 @@
     const messageCloseBtn = document.getElementById('message-close-btn');
     const wordStudySection = document.getElementById('word-study-section');
     const wordStudyList = document.getElementById('word-study-list');
-    const charCount = document.getElementById('char-count');
 
     let currentTargetLanguage = 'Japanese';
 
@@ -196,17 +192,12 @@
         English: '영어 (English)'
     };
 
-    // 글자 수 카운터
-    sourceTextInput.addEventListener('input', () => {
-        charCount.textContent = sourceTextInput.value.length;
-    });
-
     langSelector.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             langSelector.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
             currentTargetLanguage = e.target.dataset.lang;
-            targetLangTitle.innerHTML = `<i class="fas fa-check-circle mr-2 text-green-500"></i>${langDisplayNames[currentTargetLanguage]} 번역 결과`;
+            targetLangTitle.innerText = `${langDisplayNames[currentTargetLanguage]} 번역 결과`;
         }
     });
 
@@ -217,19 +208,12 @@
     messageCloseBtn.addEventListener('click', () => messageModal.classList.add('hidden'));
 
     async function translateText() {
-        const text = sourceTextInput.value.trim();
-        if (!text) {
+        const text = sourceTextInput.value;
+        if (!text.trim()) {
             showMessage('번역할 내용을 입력해주세요.');
             return;
         }
 
-        if (text.length > 5000) {
-            showMessage('텍스트는 5000자를 초과할 수 없습니다.');
-            return;
-        }
-
-        translateBtn.disabled = true;
-        translateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>번역 중...';
         targetLoader.classList.add('visible');
         koreanLoader.classList.add('visible');
         targetOutputContent.innerHTML = '';
@@ -238,20 +222,30 @@
         wordStudyList.innerHTML = '';
 
         try {
+            // Vercel API 엔드포인트로 요청
             const response = await fetch('/api/translate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     text: text,
                     targetLanguage: currentTargetLanguage
                 })
             });
 
-            const result = await response.json();
-
             if (!response.ok) {
-                throw new Error(result.error || '번역 요청에 실패했습니다.');
+                const errorData = await response.json();
+                throw new Error(errorData.error || `API 요청 실패: ${response.status}`);
             }
+
+            const result = await response.json();
+            
+            if (!result.success || !result.data) {
+                throw new Error("API 응답 형식이 올바르지 않습니다.");
+            }
+
+            const translationData = result.data;
             
             const formatOutput = (lines) => {
                 if (lines && Array.isArray(lines)) {
@@ -262,11 +256,11 @@
                 return '';
             };
 
-            targetOutputContent.innerHTML = formatOutput(result.targetTranslation);
-            koreanOutputContent.innerHTML = formatOutput(result.koreanTranslation);
+            targetOutputContent.innerHTML = formatOutput(translationData.targetTranslation);
+            koreanOutputContent.innerHTML = formatOutput(translationData.koreanTranslation);
 
-            if ((currentTargetLanguage === 'Japanese' || currentTargetLanguage === 'English' || currentTargetLanguage === 'Chinese') && result.wordStudy && result.wordStudy.length > 0) {
-                const wordListHtml = result.wordStudy.map(word => {
+            if ((currentTargetLanguage === 'Japanese' || currentTargetLanguage === 'English' || currentTargetLanguage === 'Chinese') && translationData.wordStudy && translationData.wordStudy.length > 0) {
+                const wordListHtml = translationData.wordStudy.map(word => {
                     if (currentTargetLanguage === 'Japanese') {
                         return `<div>${word.originalWord} (${word.koreanMeaning}, ${word.reading}, ${word.koreanPronunciation})</div>`;
                     } else if (currentTargetLanguage === 'English') {
@@ -285,8 +279,6 @@
             targetOutputContent.innerHTML = '';
             koreanOutputContent.innerHTML = '';
         } finally {
-            translateBtn.disabled = false;
-            translateBtn.innerHTML = '<i class="fas fa-language mr-2"></i>번역하기';
             targetLoader.classList.remove('visible');
             koreanLoader.classList.remove('visible');
         }
@@ -294,7 +286,7 @@
 
     translateBtn.addEventListener('click', translateText);
     
-    targetLangTitle.innerHTML = `<i class="fas fa-check-circle mr-2 text-green-500"></i>${langDisplayNames[currentTargetLanguage]} 번역 결과`;
+    targetLangTitle.innerText = `${langDisplayNames[currentTargetLanguage]} 번역 결과`;
 
 </script>
 </body>
