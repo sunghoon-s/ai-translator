@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 번역기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #fafafa;
+        }
+        .panel-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .panel-body {
+            padding: 1.5rem;
+        }
+        .panel-body textarea {
+            resize: none;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            outline: none;
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #374151;
+            transition: border-color 0.2s;
+        }
+        .panel-body textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+        .output-area {
+            min-height: 10rem;
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            position: relative;
+        }
+        .pronunciation {
+            font-size: 0.7em;
+            color: #4b5563;
+            margin-left: 0.5rem;
+        }
+        .output-area p {
+             line-height: 1.8;
+        }
+        .loader-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .loader-container.visible {
+            opacity: 1;
+        }
+        .loader {
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .lang-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+        }
+        #word-study-section {
+            display: none;
+        }
+        .word-study-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.25rem 1.5rem;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto space-y-6">
+        <header class="text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">AI 자동 감지 번역기</h1>
+            <p class="mt-2 text-gray-600">번역할 내용을 입력하고 언어를 선택한 후 버튼을 눌러주세요.</p>
+        </header>
+
+        <main class="space-y-6">
+            <!-- 입력 패널 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-keyboard mr-2 text-blue-500"></i>번역할 내용 (자동 언어 감지)</h2>
+                </div>
+                <div class="panel-body">
+                    <textarea id="source-text-input" rows="5" placeholder="한국어, 영어, 일본어, 중국어로 내용을 입력하세요..." maxlength="5000"></textarea>
+                    <div class="text-sm text-gray-500 mt-2">
+                        <span id="char-count">0</span>/5000자
+                    </div>
+                </div>
+            </div>
+
+            <!-- 컨트롤 패널 -->
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+                <div id="lang-selector" class="flex-shrink-0 flex items-center bg-white rounded-full p-1 shadow-sm">
+                    <button data-lang="Japanese" class="lang-btn active px-4 py-2 text-sm rounded-full transition-colors">일본어</button>
+                    <button data-lang="Chinese" class="lang-btn px-4 py-2 text-sm rounded-full transition-colors">중국어</button>
+                    <button data-lang="English" class="lang-btn px-4 py-2 text-sm rounded-full transition-colors">영어</button>
+                </div>
+                <button id="translate-btn" class="w-full sm:w-auto flex-grow bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fas fa-language mr-2"></i>번역하기
+                </button>
+            </div>
+
+            <!-- 번역 결과 패널 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 id="target-lang-title"><i class="fas fa-check-circle mr-2 text-green-500"></i>번역 결과</h2>
+                </div>
+                <div class="panel-body output-area">
+                    <div id="target-output-content" class="space-y-2"></div>
+                    <div id="word-study-section" class="mt-4 pt-4 border-t border-gray-200">
+                        <h3 class="font-semibold text-gray-700 mb-2">단어 학습</h3>
+                        <div id="word-study-list" class="text-sm word-study-grid"></div>
+                    </div>
+                    <div id="target-loader" class="loader-container"><div class="loader"></div></div>
+                </div>
+            </div>
+            
+            <!-- 한국어 결과 패널 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-check-circle mr-2 text-blue-500"></i>한국어 결과</h2>
+                </div>
+                <div class="panel-body output-area">
+                    <div id="korean-output-content" class="space-y-2"></div>
+                     <div id="korean-loader" class="loader-container"><div class="loader"></div></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 메시지 모달 -->
+    <div id="message-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm">
+            <h3 id="message-title" class="text-xl font-bold mb-4 text-red-600">오류</h3>
+            <p id="message-content" class="text-gray-700 mb-6"></p>
+            <button id="message-close-btn" class="bg-blue-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-600">확인</button>
+        </div>
+    </div>
+
+<script>
+    const sourceTextInput = document.getElementById('source-text-input');
+    const targetOutputContent = document.getElementById('target-output-content');
+    const koreanOutputContent = document.getElementById('korean-output-content');
+    const targetLangTitle = document.getElementById('target-lang-title');
+    const targetLoader = document.getElementById('target-loader');
+    const koreanLoader = document.getElementById('korean-loader');
+    const langSelector = document.getElementById('lang-selector');
+    const translateBtn = document.getElementById('translate-btn');
+    const messageModal = document.getElementById('message-modal');
+    const messageContent = document.getElementById('message-content');
+    const messageCloseBtn = document.getElementById('message-close-btn');
+    const wordStudySection = document.getElementById('word-study-section');
+    const wordStudyList = document.getElementById('word-study-list');
+    const charCount = document.getElementById('char-count');
+
+    let currentTargetLanguage = 'Japanese';
+
+    const langDisplayNames = {
+        Japanese: '일본어 (Japanese)',
+        Chinese: '중국어 (Chinese)',
+        English: '영어 (English)'
+    };
+
+    // 글자 수 카운터
+    sourceTextInput.addEventListener('input', () => {
+        charCount.textContent = sourceTextInput.value.length;
+    });
+
+    langSelector.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            langSelector.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            currentTargetLanguage = e.target.dataset.lang;
+            targetLangTitle.innerHTML = `<i class="fas fa-check-circle mr-2 text-green-500"></i>${langDisplayNames[currentTargetLanguage]} 번역 결과`;
+        }
+    });
+
+    function showMessage(content) {
+        messageContent.textContent = content;
+        messageModal.classList.remove('hidden');
+    }
+    messageCloseBtn.addEventListener('click', () => messageModal.classList.add('hidden'));
+
+    async function translateText() {
+        const text = sourceTextInput.value.trim();
+        if (!text) {
+            showMessage('번역할 내용을 입력해주세요.');
+            return;
+        }
+
+        if (text.length > 5000) {
+            showMessage('텍스트는 5000자를 초과할 수 없습니다.');
+            return;
+        }
+
+        translateBtn.disabled = true;
+        translateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>번역 중...';
+        targetLoader.classList.add('visible');
+        koreanLoader.classList.add('visible');
+        targetOutputContent.innerHTML = '';
+        koreanOutputContent.innerHTML = '';
+        wordStudySection.style.display = 'none';
+        wordStudyList.innerHTML = '';
+
+        try {
+            const response = await fetch('/api/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: text,
+                    targetLanguage: currentTargetLanguage
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || '번역 요청에 실패했습니다.');
+            }
+            
+            const formatOutput = (lines) => {
+                if (lines && Array.isArray(lines)) {
+                    return lines.map(line => 
+                        `<p class="text-lg">${line.translation || '&nbsp;'} <span class="pronunciation">(${line.pronunciation || ''})</span></p>`
+                    ).join('');
+                }
+                return '';
+            };
+
+            targetOutputContent.innerHTML = formatOutput(result.targetTranslation);
+            koreanOutputContent.innerHTML = formatOutput(result.koreanTranslation);
+
+            if ((currentTargetLanguage === 'Japanese' || currentTargetLanguage === 'English' || currentTargetLanguage === 'Chinese') && result.wordStudy && result.wordStudy.length > 0) {
+                const wordListHtml = result.wordStudy.map(word => {
+                    if (currentTargetLanguage === 'Japanese') {
+                        return `<div>${word.originalWord} (${word.koreanMeaning}, ${word.reading}, ${word.koreanPronunciation})</div>`;
+                    } else if (currentTargetLanguage === 'English') {
+                        return `<div>${word.originalWord} (${word.koreanMeaning}, ${word.reading})</div>`;
+                    } else { // Chinese
+                        return `<div>${word.originalWord} (${word.koreanMeaning}, ${word.koreanPronunciation}, ${word.reading})</div>`;
+                    }
+                }).join('');
+                wordStudyList.innerHTML = wordListHtml;
+                wordStudySection.style.display = 'block';
+            }
+
+        } catch (error) {
+            console.error('번역 오류:', error);
+            showMessage(error.message || '번역 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            targetOutputContent.innerHTML = '';
+            koreanOutputContent.innerHTML = '';
+        } finally {
+            translateBtn.disabled = false;
+            translateBtn.innerHTML = '<i class="fas fa-language mr-2"></i>번역하기';
+            targetLoader.classList.remove('visible');
+            koreanLoader.classList.remove('visible');
+        }
+    }
+
+    translateBtn.addEventListener('click', translateText);
+    
+    targetLangTitle.innerHTML = `<i class="fas fa-check-circle mr-2 text-green-500"></i>${langDisplayNames[currentTargetLanguage]} 번역 결과`;
+
+</script>
+</body>
+</html>
