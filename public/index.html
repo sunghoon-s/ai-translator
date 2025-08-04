@@ -797,6 +797,54 @@
                 example: '今日は晴れです。',
                 examplePronunciation: '쿄우와 하레데스',
                 koreanTranslation: '오늘은 맑습니다.'
+            },
+            '自動車': {
+                korean: '지도우샤',
+                romaji: 'jidōsha',
+                hiragana: 'じどうしゃ',
+                example: '自動車が新しいです。',
+                examplePronunciation: '지도우샤가 아타라시이데스',
+                koreanTranslation: '자동차가 새롭습니다.'
+            },
+            '会社': {
+                korean: '카이샤',
+                romaji: 'kaisha',
+                hiragana: 'かいしゃ',
+                example: '会社で働いています。',
+                examplePronunciation: '카이샤데 하타라이테이마스',
+                koreanTranslation: '회사에서 일하고 있습니다.'
+            },
+            '機械': {
+                korean: '키카이',
+                romaji: 'kikai',
+                hiragana: 'きかい',
+                example: '機械の調子がいいです。',
+                examplePronunciation: '키카이노 쵸우시가 이이데스',
+                koreanTranslation: '기계의 상태가 좋습니다.'
+            },
+            '部品': {
+                korean: '부힌',
+                romaji: 'buhin',
+                hiragana: 'ぶひん',
+                example: '部品を交換しました。',
+                examplePronunciation: '부힌오 코우칸시마시타',
+                koreanTranslation: '부품을 교환했습니다.'
+            },
+            '工場': {
+                korean: '코우죠우',
+                romaji: 'kōjō',
+                hiragana: 'こうじょう',
+                example: '工場で生産しています。',
+                examplePronunciation: '코우죠우데 세이산시테이마스',
+                koreanTranslation: '공장에서 생산하고 있습니다.'
+            },
+            '安全': {
+                korean: '안젠',
+                romaji: 'anzen',
+                hiragana: 'あんぜん',
+                example: '安全が第一です。',
+                examplePronunciation: '안젠가 다이이치데스',
+                koreanTranslation: '안전이 첫 번째입니다.'
             }
         };
         
@@ -808,8 +856,8 @@
         // 기본값 반환
         return {
             korean: word,
-            romaji: word,
-            hiragana: word,
+            romaji: word, // 로마자는 원래 단어 그대로
+            hiragana: '', // 히라가나는 빈 문자열로 (데이터가 없는 경우)
             example: `${word}は重要です。`,
             examplePronunciation: `${word}와 쥬우요우데스`,
             koreanTranslation: `${word}는 중요합니다.`
