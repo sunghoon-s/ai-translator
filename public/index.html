@@ -119,7 +119,7 @@
         
         .word-popup .word-title {
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1.32rem; /* 120% 적용 */
             color: #1f2937;
             margin-bottom: 0.5rem;
         }
@@ -136,6 +136,12 @@
             margin-top: 0.5rem;
         }
         
+        .word-popup .example-label {
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+        
         .word-popup .example-text {
             color: #374151;
             margin-bottom: 0.25rem;
@@ -144,6 +150,14 @@
         .word-popup .example-pronunciation {
             color: #6b7280;
             font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .word-popup .korean-translation {
+            color: #374151;
+            font-size: 0.85rem;
+            border-top: 1px solid #f3f4f6;
+            padding-top: 0.5rem;
         }
         
         .hoverable-word {
@@ -280,8 +294,11 @@
         <div id="popup-word" class="word-title"></div>
         <div id="popup-pronunciation" class="pronunciation"></div>
         <div id="popup-example" class="example">
+            <div class="example-label">(예문):</div>
             <div id="popup-example-text" class="example-text"></div>
             <div id="popup-example-pronunciation" class="example-pronunciation"></div>
+            <div class="example-label">(예문):</div>
+            <div id="popup-korean-translation" class="korean-translation"></div>
         </div>
     </div>
 
@@ -318,6 +335,7 @@
     const popupExample = document.getElementById('popup-example');
     const popupExampleText = document.getElementById('popup-example-text');
     const popupExamplePronunciation = document.getElementById('popup-example-pronunciation');
+    const popupKoreanTranslation = document.getElementById('popup-korean-translation');
 
     let currentTargetLanguage = 'Japanese';
     let isTranslating = false; // 번역 중 상태 관리
@@ -633,9 +651,10 @@
     
     function displayPopup(event, word, wordInfo) {
         popupWord.textContent = word;
-        popupPronunciation.textContent = `${wordInfo.koreanPronunciation} (${wordInfo.romanization})`;
+        popupPronunciation.textContent = `(${wordInfo.romanization} + ${wordInfo.koreanPronunciation})`;
         popupExampleText.textContent = wordInfo.example;
-        popupExamplePronunciation.textContent = `${wordInfo.examplePronunciation} - ${wordInfo.koreanTranslation}`;
+        popupExamplePronunciation.textContent = `(${wordInfo.examplePronunciation})`;
+        popupKoreanTranslation.textContent = wordInfo.koreanTranslation;
         
         // 팝업 위치 계산
         const rect = event.target.getBoundingClientRect();
@@ -674,7 +693,7 @@
         if (currentTargetLanguage === 'Japanese') {
             const jpData = getJapaneseWordData(word);
             wordData.koreanPronunciation = jpData.korean;
-            wordData.romanization = jpData.romaji;
+            wordData.romanization = jpData.romaji + ' + ' + jpData.hiragana;
             wordData.example = jpData.example;
             wordData.examplePronunciation = jpData.examplePronunciation;
             wordData.koreanTranslation = jpData.koreanTranslation;
@@ -702,6 +721,7 @@
             'エンジン': {
                 korean: '엔진',
                 romaji: 'enjin',
+                hiragana: 'えんじん',
                 example: 'エンジンの音が大きいです。',
                 examplePronunciation: '엔진노 오토가 오키이데스',
                 koreanTranslation: '엔진 소리가 큽니다.'
@@ -709,6 +729,7 @@
             'ブレーキ': {
                 korean: '브레이키',
                 romaji: 'burēki',
+                hiragana: 'ぶれーき',
                 example: 'ブレーキを踏んでください。',
                 examplePronunciation: '브레이키오 푼데쿠다사이',
                 koreanTranslation: '브레이크를 밟아주세요.'
@@ -716,6 +737,7 @@
             'タイヤ': {
                 korean: '타이야',
                 romaji: 'taiya',
+                hiragana: 'たいや',
                 example: 'タイヤの空気圧を確認します。',
                 examplePronunciation: '타이야노 쿠우키아츠오 카쿠닌시마스',
                 koreanTranslation: '타이어의 공기압을 확인합니다.'
@@ -723,6 +745,7 @@
             'ドア': {
                 korean: '도아',
                 romaji: 'doa',
+                hiragana: 'どあ',
                 example: 'ドアが開いています。',
                 examplePronunciation: '도아가 아이테이마스',
                 koreanTranslation: '문이 열려있습니다.'
@@ -730,6 +753,7 @@
             '窓': {
                 korean: '마도',
                 romaji: 'mado',
+                hiragana: 'まど',
                 example: '窓を開けてください。',
                 examplePronunciation: '마도오 아케테쿠다사이',
                 koreanTranslation: '창문을 열어주세요.'
@@ -737,6 +761,7 @@
             '重要': {
                 korean: '쥬우요우',
                 romaji: 'jūyō',
+                hiragana: 'じゅうよう',
                 example: 'この部品は重要です。',
                 examplePronunciation: '코노 부힌와 쥬우요우데스',
                 koreanTranslation: '이 부품은 중요합니다.'
@@ -744,6 +769,7 @@
             '技術': {
                 korean: '기쥬츠',
                 romaji: 'gijutsu',
+                hiragana: 'ぎじゅつ',
                 example: '新しい技術を開発しました。',
                 examplePronunciation: '아타라시이 기쥬츠오 카이하츠시마시타',
                 koreanTranslation: '새로운 기술을 개발했습니다.'
@@ -751,6 +777,7 @@
             '製造': {
                 korean: '세이조우',
                 romaji: 'seizō',
+                hiragana: 'せいぞう',
                 example: '自動車を製造しています。',
                 examplePronunciation: '지도우샤오 세이조우시테이마스',
                 koreanTranslation: '자동차를 제조하고 있습니다.'
@@ -758,6 +785,7 @@
             '品質': {
                 korean: '힌시츠',
                 romaji: 'hinshitsu',
+                hiragana: 'ひんしつ',
                 example: '品質管理が大切です。',
                 examplePronunciation: '힌시츠칸리가 타이세츠데스',
                 koreanTranslation: '품질 관리가 중요합니다.'
@@ -765,6 +793,7 @@
             'です': {
                 korean: '데스',
                 romaji: 'desu',
+                hiragana: 'です',
                 example: '今日は晴れです。',
                 examplePronunciation: '쿄우와 하레데스',
                 koreanTranslation: '오늘은 맑습니다.'
@@ -780,6 +809,7 @@
         return {
             korean: word,
             romaji: word,
+            hiragana: word,
             example: `${word}は重要です。`,
             examplePronunciation: `${word}와 쥬우요우데스`,
             koreanTranslation: `${word}는 중요합니다.`
