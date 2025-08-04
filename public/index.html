@@ -249,6 +249,7 @@
     let currentTargetLanguage = 'Japanese';
     let isTranslating = false; // 번역 중 상태 관리
     let debounceTimer = null; // 디바운스 타이머
+    let allTranslations = null; // 모든 번역 결과 저장
 
     const langDisplayNames = {
         Japanese: '일본어 (Japanese)',
@@ -262,6 +263,11 @@
             e.target.classList.add('active');
             currentTargetLanguage = e.target.dataset.lang;
             targetLangTitle.innerText = `${langDisplayNames[currentTargetLanguage]} 번역 결과`;
+            
+            // 이미 번역된 결과가 있으면 바로 표시
+            if (allTranslations) {
+                displayTranslation(currentTargetLanguage);
+            }
         }
     });
 
@@ -355,10 +361,9 @@
             const translationStyle = translationStyleSelect.value;
             const customPrompt = customPromptTextarea.value.trim();
 
-            // Vercel API 엔드포인트로 요청
+            // Vercel API 엔드포인트로 요청 (targetLanguage 제거)
             const requestBody = {
-                text: text,
-                targetLanguage: currentTargetLanguage
+                text: text
             };
 
             // 전문가 모드가 활성화된 경우에만 추가 파라미터 전송
@@ -395,6 +400,9 @@
 
             const translationData = result.data;
             
+            // 모든 번역 결과 저장
+            allTranslations = translationData;
+            
             const formatOutput = (lines) => {
                 if (lines && Array.isArray(lines)) {
                     return lines.map(line => {
@@ -418,32 +426,15 @@
                 return '';
             };
 
-            targetOutputContent.innerHTML = formatOutput(translationData.targetTranslation);
-            koreanOutputContent.innerHTML = formatKoreanOutput(translationData.koreanTranslation);
+            // 현재 선택된 언어로 표시
+            displayTranslation(currentTargetLanguage);
             
+            // 한국어 결과는 항상 표시
+            koreanOutputContent.innerHTML = formatKoreanOutput(translationData.koreanTranslation);
             // 번역 결과 표시 완료
             setTimeout(() => {
                 // 추가 처리가 필요한 경우 여기에 작성
             }, 100);
-
-            if ((currentTargetLanguage === 'Japanese' || currentTargetLanguage === 'English' || currentTargetLanguage === 'Chinese') && translationData.wordStudy && translationData.wordStudy.length > 0) {
-                const wordListHtml = translationData.wordStudy.map(word => {
-                    const originalWord = escapeHtml(word.originalWord);
-                    const koreanMeaning = escapeHtml(word.koreanMeaning);
-                    const reading = escapeHtml(word.reading);
-                    const koreanPronunciation = escapeHtml(word.koreanPronunciation);
-                    
-                    if (currentTargetLanguage === 'Japanese') {
-                        return `<div>${originalWord} (${koreanMeaning}, ${reading}, ${koreanPronunciation})</div>`;
-                    } else if (currentTargetLanguage === 'English') {
-                        return `<div>${originalWord} (${koreanMeaning}, ${reading})</div>`;
-                    } else { // Chinese
-                        return `<div>${originalWord} (${koreanMeaning}, ${koreanPronunciation}, ${reading})</div>`;
-                    }
-                }).join('');
-                wordStudyList.innerHTML = wordListHtml;
-                wordStudySection.style.display = 'block';
-            }
 
         } catch (error) {
             console.error('번역 오류:', error);
@@ -464,6 +455,7 @@
             showMessage(errorMessage);
             targetOutputContent.innerHTML = '';
             koreanOutputContent.innerHTML = '';
+            allTranslations = null; // 번역 결과 초기화
         } finally {
             // 번역 완료 상태로 복원
             isTranslating = false;
@@ -471,6 +463,67 @@
             translateBtn.innerHTML = '<i class="fas fa-language mr-2"></i>번역하기';
             targetLoader.classList.remove('visible');
             koreanLoader.classList.remove('visible');
+        }
+    }
+
+    // 번역 결과 표시 함수
+    function displayTranslation(language) {
+        if (!allTranslations) return;
+
+        const formatOutput = (lines) => {
+            if (lines && Array.isArray(lines)) {
+                return lines.map(line => {
+                    const translation = escapeHtml(line.translation || '');
+                    const pronunciation = escapeHtml(line.pronunciation || '');
+                    
+                    return `<p class="text-lg">${translation} <span class="pronunciation">(${pronunciation})</span></p>`;
+                }).join('');
+            }
+            return '';
+        };
+
+        let translationToShow = null;
+        let wordStudyToShow = null;
+
+        switch(language) {
+            case 'Japanese':
+                translationToShow = allTranslations.japaneseTranslation;
+                wordStudyToShow = allTranslations.japaneseWordStudy;
+                break;
+            case 'Chinese':
+                translationToShow = allTranslations.chineseTranslation;
+                wordStudyToShow = allTranslations.chineseWordStudy;
+                break;
+            case 'English':
+                translationToShow = allTranslations.englishTranslation;
+                wordStudyToShow = allTranslations.englishWordStudy;
+                break;
+        }
+
+        if (translationToShow) {
+            targetOutputContent.innerHTML = formatOutput(translationToShow);
+        }
+
+        // 단어 학습 섹션 업데이트
+        if (wordStudyToShow && wordStudyToShow.length > 0) {
+            const wordListHtml = wordStudyToShow.map(word => {
+                const originalWord = escapeHtml(word.originalWord);
+                const koreanMeaning = escapeHtml(word.koreanMeaning);
+                const reading = escapeHtml(word.reading);
+                const koreanPronunciation = escapeHtml(word.koreanPronunciation);
+                
+                if (language === 'Japanese') {
+                    return `<div>${originalWord} (${koreanMeaning}, ${reading}, ${koreanPronunciation})</div>`;
+                } else if (language === 'English') {
+                    return `<div>${originalWord} (${koreanMeaning}, ${reading})</div>`;
+                } else { // Chinese
+                    return `<div>${originalWord} (${koreanMeaning}, ${koreanPronunciation}, ${reading})</div>`;
+                }
+            }).join('');
+            wordStudyList.innerHTML = wordListHtml;
+            wordStudySection.style.display = 'block';
+        } else {
+            wordStudySection.style.display = 'none';
         }
     }
 

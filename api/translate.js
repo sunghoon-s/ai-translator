@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { text, targetLanguage, customPrompt, translationStyle } = req.body;
+    const { text, customPrompt, translationStyle } = req.body;
 
     // 요청 본문 크기 확인
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -53,12 +53,6 @@ export default async function handler(req, res) {
     // 최소 텍스트 길이 확인
     if (text.trim().length < 1) {
       return res.status(400).json({ error: '번역할 내용이 너무 짧습니다.' });
-    }
-
-    // 허용된 언어 목록 검증
-    const allowedLanguages = ['Japanese', 'Chinese', 'English'];
-    if (!targetLanguage || typeof targetLanguage !== 'string' || !allowedLanguages.includes(targetLanguage)) {
-      return res.status(400).json({ error: '지원되지 않는 언어입니다.' });
     }
 
     // 커스텀 프롬프트 검증
@@ -131,15 +125,15 @@ export default async function handler(req, res) {
       You are a multilingual translator specialized in automotive manufacturing.
       ${expertPrompt}${additionalPrompt}${stylePrompt}
 
-      Detect source language, then translate to ${targetLanguage} and Korean.
+      Detect source language, then translate to Japanese, Chinese, and English simultaneously, plus Korean.
       Provide Korean phonetic transcription for each translation.
 
       **Structure**: ${originalLineCount} line(s) - ${isSingleLine ? 'Keep as single line' : 'Preserve line breaks'}
 
-      **Word Study**: Generate from ${targetLanguage} translation words only.
-      ${targetLanguage === 'Japanese' ? '- Japanese: originalWord (Kanji), koreanMeaning, reading (hiragana), koreanPronunciation' : ''}
-      ${targetLanguage === 'English' ? '- English: originalWord, koreanMeaning, reading (IPA)' : ''}
-      ${targetLanguage === 'Chinese' ? '- Chinese: originalWord, koreanMeaning, reading (Pinyin), koreanPronunciation' : ''}
+      **Word Study**: Generate separate word study lists for each target language (Japanese, English, Chinese).
+      - Japanese: originalWord (Kanji), koreanMeaning, reading (hiragana), koreanPronunciation
+      - English: originalWord, koreanMeaning, reading (IPA)
+      - Chinese: originalWord, koreanMeaning, reading (Pinyin), koreanPronunciation
 
       Source: "${sanitizedText}"
     `;
@@ -152,7 +146,29 @@ export default async function handler(req, res) {
           type: "OBJECT",
           properties: {
             detectedLanguage: { type: "STRING" },
-            targetTranslation: {
+            japaneseTranslation: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  translation: { type: "STRING" },
+                  pronunciation: { type: "STRING" }
+                },
+                required: ["translation", "pronunciation"]
+              }
+            },
+            chineseTranslation: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  translation: { type: "STRING" },
+                  pronunciation: { type: "STRING" }
+                },
+                required: ["translation", "pronunciation"]
+              }
+            },
+            englishTranslation: {
               type: "ARRAY",
               items: {
                 type: "OBJECT",
@@ -174,7 +190,7 @@ export default async function handler(req, res) {
                 required: ["translation", "pronunciation"]
               }
             },
-            wordStudy: {
+            japaneseWordStudy: {
               type: "ARRAY",
               items: {
                 type: "OBJECT",
@@ -186,9 +202,34 @@ export default async function handler(req, res) {
                 },
                 required: ["originalWord", "koreanMeaning"]
               }
+            },
+            chineseWordStudy: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  originalWord: { type: "STRING" },
+                  koreanMeaning: { type: "STRING" },
+                  reading: { type: "STRING" },
+                  koreanPronunciation: { type: "STRING" }
+                },
+                required: ["originalWord", "koreanMeaning"]
+              }
+            },
+            englishWordStudy: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  originalWord: { type: "STRING" },
+                  koreanMeaning: { type: "STRING" },
+                  reading: { type: "STRING" }
+                },
+                required: ["originalWord", "koreanMeaning"]
+              }
             }
           },
-          required: ["detectedLanguage", "targetTranslation", "koreanTranslation"]
+          required: ["detectedLanguage", "japaneseTranslation", "chineseTranslation", "englishTranslation", "koreanTranslation"]
         },
         // 속도 최적화 설정
         temperature: 0.1,
@@ -233,7 +274,7 @@ export default async function handler(req, res) {
     }
 
     // 응답 데이터 검증
-    if (!translationData.detectedLanguage || !translationData.targetTranslation || !translationData.koreanTranslation) {
+    if (!translationData.detectedLanguage || !translationData.japaneseTranslation || !translationData.chineseTranslation || !translationData.englishTranslation || !translationData.koreanTranslation) {
       throw new Error("번역 결과가 완전하지 않습니다.");
     }
     
