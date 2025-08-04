@@ -134,6 +134,10 @@ export default async function handler(req, res) {
 
     const stylePrompt = translationStyle ? `\n\n**번역 스타일**: ${styleInstructions[translationStyle]}` : '';
 
+    // 원본 텍스트의 줄 수 확인
+    const originalLineCount = text.trim().split('\n').filter(line => line.trim()).length;
+    const isSingleLine = originalLineCount === 1;
+
     const prompt = `
       You are an expert multilingual translator with specialized knowledge in automotive manufacturing.
       
@@ -143,6 +147,14 @@ export default async function handler(req, res) {
       Then, perform two translations: to ${targetLanguage} and to Korean.
       For each translation, provide a line-by-line phonetic transcription in Korean Hangul.
 
+      **Important Translation Structure Instructions:**
+      - The source text has ${originalLineCount} line(s).
+      ${isSingleLine ? 
+        '- Since the source is a single line/sentence, provide the translation as a SINGLE line/sentence as well. Do NOT split into multiple lines unless absolutely necessary for readability.' :
+        '- Preserve the original line structure and breaks in your translation.'
+      }
+      - Each translation should maintain the same logical structure as the source text.
+
       **Crucial Instructions for Word Study List:**
       - The "wordStudy" list MUST be generated based on the words that appear in the **final ${targetLanguage} translation**, NOT from the original "Source Text".
       - If the target language is Japanese, English, OR Chinese, you MUST create this "wordStudy" list.
@@ -150,7 +162,6 @@ export default async function handler(req, res) {
       - For **English**: For each key vocabulary word **in the English translation**, add an object to the list containing: 'originalWord' (the English word), 'koreanMeaning', and 'reading' (the IPA phonetic transcription, e.g., /həˈloʊ/). The 'koreanPronunciation' field for English words should be an empty string.
       - For **Chinese**: For each key vocabulary word **in the Chinese translation**, add an object to the list containing: 'originalWord' (the Chinese word), 'koreanMeaning', 'reading' (the Pinyin with tone marks), and 'koreanPronunciation' (the Hangul representation of Pinyin).
       - If the source text is already Korean, the Korean translation should just be the original text.
-      - Preserve all original line breaks in all translations.
 
       **중요**: 자동차 제조업계의 최신 기술 동향과 전문 용어를 반영하여 번역하세요.
 

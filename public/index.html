@@ -99,6 +99,63 @@
             grid-template-columns: repeat(2, 1fr);
             gap: 0.25rem 1.5rem;
         }
+        
+        /* 단어 팝업 스타일 */
+        .word-popup {
+            position: absolute;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1rem;
+            min-width: 250px;
+            max-width: 350px;
+            z-index: 1000;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            display: none;
+            pointer-events: none;
+        }
+        
+        .word-popup .word-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+        
+        .word-popup .pronunciation {
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .word-popup .example {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .word-popup .example-text {
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+        
+        .word-popup .example-pronunciation {
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+        
+        .hoverable-word {
+            cursor: pointer;
+            padding: 0.1rem 0.2rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s;
+        }
+        
+        .hoverable-word:hover {
+            background-color: #dbeafe;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -218,6 +275,16 @@
         </main>
     </div>
 
+    <!-- 단어 팝업 -->
+    <div id="word-popup" class="word-popup">
+        <div id="popup-word" class="word-title"></div>
+        <div id="popup-pronunciation" class="pronunciation"></div>
+        <div id="popup-example" class="example">
+            <div id="popup-example-text" class="example-text"></div>
+            <div id="popup-example-pronunciation" class="example-pronunciation"></div>
+        </div>
+    </div>
+
     <!-- 메시지 모달 -->
     <div id="message-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm">
@@ -245,6 +312,12 @@
     const translationStyleSelect = document.getElementById('translation-style');
     const customPromptTextarea = document.getElementById('custom-prompt');
     const promptCounter = document.getElementById('prompt-counter');
+    const wordPopup = document.getElementById('word-popup');
+    const popupWord = document.getElementById('popup-word');
+    const popupPronunciation = document.getElementById('popup-pronunciation');
+    const popupExample = document.getElementById('popup-example');
+    const popupExampleText = document.getElementById('popup-example-text');
+    const popupExamplePronunciation = document.getElementById('popup-example-pronunciation');
 
     let currentTargetLanguage = 'Japanese';
     let isTranslating = false; // 번역 중 상태 관리
@@ -409,6 +482,25 @@
 
             targetOutputContent.innerHTML = formatOutput(translationData.targetTranslation);
             koreanOutputContent.innerHTML = formatOutput(translationData.koreanTranslation);
+            
+            // 번역 결과에 호버 기능 추가
+            setTimeout(() => {
+                const targetParagraphs = targetOutputContent.querySelectorAll('p');
+                targetParagraphs.forEach(p => {
+                    const textContent = p.childNodes[0]?.textContent || '';
+                    if (textContent.trim()) {
+                        makeTextHoverable(textContent.trim(), p.childNodes[0]);
+                    }
+                });
+                
+                const koreanParagraphs = koreanOutputContent.querySelectorAll('p');
+                koreanParagraphs.forEach(p => {
+                    const textContent = p.childNodes[0]?.textContent || '';
+                    if (textContent.trim()) {
+                        makeTextHoverable(textContent.trim(), p.childNodes[0]);
+                    }
+                });
+            }, 100);
 
             if ((currentTargetLanguage === 'Japanese' || currentTargetLanguage === 'English' || currentTargetLanguage === 'Chinese') && translationData.wordStudy && translationData.wordStudy.length > 0) {
                 const wordListHtml = translationData.wordStudy.map(word => {
@@ -427,6 +519,17 @@
                 }).join('');
                 wordStudyList.innerHTML = wordListHtml;
                 wordStudySection.style.display = 'block';
+                
+                // 단어 학습 섹션에 호버 기능 추가
+                setTimeout(() => {
+                    const wordStudyItems = wordStudyList.querySelectorAll('div');
+                    wordStudyItems.forEach(div => {
+                        const textContent = div.textContent || '';
+                        if (textContent.trim()) {
+                            makeTextHoverable(textContent.trim(), div);
+                        }
+                    });
+                }, 100);
             }
 
         } catch (error) {
@@ -496,6 +599,155 @@
             showMessage('자동차 제조업 전문가 모드가 활성화되었습니다. 기술적이고 전문적인 번역을 제공합니다.', 'info');
         }
     });
+
+    // 단어 팝업 관련 함수들
+    function createHoverableWord(word, wordData) {
+        const span = document.createElement('span');
+        span.textContent = word;
+        span.className = 'hoverable-word';
+        span.dataset.word = word;
+        if (wordData) {
+            span.dataset.wordData = JSON.stringify(wordData);
+        }
+        
+        span.addEventListener('mouseenter', (e) => showWordPopup(e, word, wordData));
+        span.addEventListener('mouseleave', hideWordPopup);
+        
+        return span;
+    }
+    
+    async function showWordPopup(event, word, existingData = null) {
+        if (existingData) {
+            displayPopup(event, word, existingData);
+            return;
+        }
+        
+        // 사전 API 호출로 단어 정보 가져오기
+        try {
+            const wordInfo = await getWordInfo(word);
+            displayPopup(event, word, wordInfo);
+        } catch (error) {
+            console.error('단어 정보 가져오기 실패:', error);
+            // 기본 정보로 팝업 표시
+            displayPopup(event, word, {
+                pronunciation: '발음 정보 없음',
+                example: word + '를 사용한 예문입니다.',
+                examplePronunciation: '예문 발음'
+            });
+        }
+    }
+    
+    function displayPopup(event, word, wordInfo) {
+        popupWord.textContent = word;
+        popupPronunciation.textContent = `${wordInfo.koreanPronunciation || ''} (${wordInfo.romanization || ''})`;
+        popupExampleText.textContent = wordInfo.example || `${word}를 사용한 예문입니다.`;
+        popupExamplePronunciation.textContent = wordInfo.examplePronunciation || '';
+        
+        // 팝업 위치 계산
+        const rect = event.target.getBoundingClientRect();
+        const popupRect = wordPopup.getBoundingClientRect();
+        
+        let left = rect.left + window.scrollX;
+        let top = rect.bottom + window.scrollY + 5;
+        
+        // 화면 경계 확인 및 조정
+        if (left + 300 > window.innerWidth) {
+            left = window.innerWidth - 320;
+        }
+        if (top + 150 > window.innerHeight + window.scrollY) {
+            top = rect.top + window.scrollY - 160;
+        }
+        
+        wordPopup.style.left = left + 'px';
+        wordPopup.style.top = top + 'px';
+        wordPopup.style.display = 'block';
+    }
+    
+    function hideWordPopup() {
+        wordPopup.style.display = 'none';
+    }
+    
+    async function getWordInfo(word) {
+        // 간단한 단어 정보 생성 (실제로는 사전 API를 호출할 수 있음)
+        const wordData = {
+            koreanPronunciation: '',
+            romanization: '',
+            example: '',
+            examplePronunciation: ''
+        };
+        
+        // 언어별 처리
+        if (currentTargetLanguage === 'Japanese') {
+            wordData.koreanPronunciation = await getKoreanPronunciation(word);
+            wordData.romanization = await getRomanization(word);
+            wordData.example = `${word}は重要です。`;
+            wordData.examplePronunciation = '(와 중요데스)';
+        } else if (currentTargetLanguage === 'English') {
+            wordData.koreanPronunciation = await getKoreanPronunciation(word);
+            wordData.romanization = `[${word.toLowerCase()}]`;
+            wordData.example = `This ${word} is important.`;
+            wordData.examplePronunciation = '(디스 ' + wordData.koreanPronunciation + ' 이즈 임포턴트)';
+        } else if (currentTargetLanguage === 'Chinese') {
+            wordData.koreanPronunciation = await getKoreanPronunciation(word);
+            wordData.romanization = await getPinyin(word);
+            wordData.example = `这个${word}很重要。`;
+            wordData.examplePronunciation = '(저거 ' + wordData.koreanPronunciation + ' 헌 중야오)';
+        }
+        
+        return wordData;
+    }
+    
+    async function getKoreanPronunciation(word) {
+        // 간단한 한글 발음 매핑 (실제로는 더 정교한 변환 필요)
+        const pronunciationMap = {
+            'car': '카',
+            'engine': '엔진',
+            'brake': '브레이크',
+            'wheel': '휠',
+            'door': '도어',
+            'window': '윈도우',
+            'important': '임포턴트',
+            'technology': '테크놀로지',
+            'manufacturing': '매뉴팩처링',
+            'automotive': '오토모티브'
+        };
+        
+        return pronunciationMap[word.toLowerCase()] || word;
+    }
+    
+    async function getRomanization(word) {
+        // 일본어 로마자 표기 (간단한 예시)
+        const romaji = word.replace(/は/g, 'wa').replace(/を/g, 'wo');
+        return romaji;
+    }
+    
+    async function getPinyin(word) {
+        // 중국어 병음 (간단한 예시)
+        return word + ' (pinyin)';
+    }
+    
+    function makeTextHoverable(text, container) {
+        const words = text.split(/(\s+|[,.!?;:])/);
+        container.innerHTML = '';
+        
+        words.forEach(word => {
+            if (word.trim() && !/^[,.!?;:\s]+$/.test(word)) {
+                const hoverableWord = createHoverableWord(word.trim());
+                container.appendChild(hoverableWord);
+                
+                // 공백이나 구두점 추가
+                const nextWordIndex = words.indexOf(word) + 1;
+                if (nextWordIndex < words.length && /^[,.!?;:\s]+$/.test(words[nextWordIndex])) {
+                    container.appendChild(document.createTextNode(words[nextWordIndex]));
+                }
+            } else if (/^[,.!?;:\s]+$/.test(word)) {
+                // 이미 처리된 구두점이 아닌 경우에만 추가
+                if (container.lastChild && container.lastChild.textContent !== word) {
+                    container.appendChild(document.createTextNode(word));
+                }
+            }
+        });
+    }
     
     targetLangTitle.innerText = `${langDisplayNames[currentTargetLanguage]} 번역 결과`;
 
