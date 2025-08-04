@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 자동 번역기</title>
+    <title>자동차 제조업 전문 AI 번역기 | 생산기술 엔지니어용</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -105,8 +105,15 @@
 
     <div class="max-w-3xl mx-auto space-y-6">
         <header class="text-center">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">AI 자동 감지 번역기</h1>
-            <p class="mt-2 text-gray-600">번역할 내용을 입력하고 언어를 선택한 후 버튼을 눌러주세요.</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">
+                <i class="fas fa-industry mr-3 text-blue-600"></i>
+                자동차 제조업 전문 AI 번역기
+            </h1>
+            <p class="mt-2 text-gray-600">생산기술 엔지니어를 위한 전문적이고 기술적인 번역 서비스</p>
+            <div class="mt-2 flex justify-center items-center text-sm text-blue-600">
+                <i class="fas fa-check-circle mr-1"></i>
+                <span>절삭/연삭 공정 | 조립/검사 | 양산 라인 구축 전문</span>
+            </div>
         </header>
 
         <main class="space-y-6">
@@ -125,15 +132,62 @@
             </div>
 
             <!-- 컨트롤 패널 -->
-            <div class="flex flex-col sm:flex-row items-center gap-4">
-                <div id="lang-selector" class="flex-shrink-0 flex items-center bg-white rounded-full p-1 shadow-sm">
-                    <button data-lang="Japanese" class="lang-btn active px-4 py-2 text-sm rounded-full transition-colors">일본어</button>
-                    <button data-lang="Chinese" class="lang-btn px-4 py-2 text-sm rounded-full transition-colors">중국어</button>
-                    <button data-lang="English" class="lang-btn px-4 py-2 text-sm rounded-full transition-colors">영어</button>
+            <div class="flex flex-col gap-4">
+                <!-- 언어 선택 및 번역 버튼 -->
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <div id="lang-selector" class="flex-shrink-0 flex items-center bg-white rounded-full p-1 shadow-sm">
+                        <button data-lang="Japanese" class="lang-btn active px-4 py-2 text-sm rounded-full transition-colors">일본어</button>
+                        <button data-lang="Chinese" class="lang-btn px-4 py-2 text-sm rounded-full transition-colors">중국어</button>
+                        <button data-lang="English" class="lang-btn px-4 py-2 text-sm rounded-full transition-colors">영어</button>
+                    </div>
+                    <button id="translate-btn" class="w-full sm:w-auto flex-grow bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-language mr-2"></i>번역하기
+                    </button>
                 </div>
-                <button id="translate-btn" class="w-full sm:w-auto flex-grow bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <i class="fas fa-language mr-2"></i>번역하기
-                </button>
+                
+                <!-- 전문가 모드 및 스타일 설정 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-cogs mr-2 text-purple-500"></i>전문가 번역 설정</h3>
+                    </div>
+                    <div class="panel-body">
+                        <!-- 전문가 모드 토글 -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-industry mr-2 text-blue-500"></i>
+                                <span class="font-medium">자동차 제조업 전문가 모드</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="expert-mode" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                        
+                        <!-- 번역 스타일 선택 -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">번역 스타일</label>
+                            <select id="translation-style" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">기본 스타일</option>
+                                <option value="business">비즈니스 (전문적)</option>
+                                <option value="formal">격식체 (공식적)</option>
+                                <option value="academic">학술적 (정확한)</option>
+                                <option value="literal">직역 (원문 충실)</option>
+                                <option value="creative">창의적 (자연스러운)</option>
+                                <option value="casual">일상체 (친근한)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 커스텀 프롬프트 -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">추가 번역 지침 (선택사항)</label>
+                            <textarea id="custom-prompt" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none" placeholder="예: 기술 문서용으로 번역해주세요, 초보자도 이해할 수 있게 설명을 추가해주세요 등"></textarea>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs text-gray-500">추가적인 번역 요구사항을 입력하세요</span>
+                                <span id="prompt-counter" class="text-xs text-gray-500">0/500</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 번역 결과 패널 -->
@@ -187,6 +241,10 @@
     const messageCloseBtn = document.getElementById('message-close-btn');
     const wordStudySection = document.getElementById('word-study-section');
     const wordStudyList = document.getElementById('word-study-list');
+    const expertModeToggle = document.getElementById('expert-mode');
+    const translationStyleSelect = document.getElementById('translation-style');
+    const customPromptTextarea = document.getElementById('custom-prompt');
+    const promptCounter = document.getElementById('prompt-counter');
 
     let currentTargetLanguage = 'Japanese';
     let isTranslating = false; // 번역 중 상태 관리
@@ -292,16 +350,33 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 35000);
 
+            // 전문가 모드 및 사용자 설정 가져오기
+            const isExpertMode = expertModeToggle.checked;
+            const translationStyle = translationStyleSelect.value;
+            const customPrompt = customPromptTextarea.value.trim();
+
             // Vercel API 엔드포인트로 요청
+            const requestBody = {
+                text: text,
+                targetLanguage: currentTargetLanguage
+            };
+
+            // 전문가 모드가 활성화된 경우에만 추가 파라미터 전송
+            if (isExpertMode) {
+                if (translationStyle) {
+                    requestBody.translationStyle = translationStyle;
+                }
+                if (customPrompt) {
+                    requestBody.customPrompt = customPrompt;
+                }
+            }
+
             const response = await fetch('/api/translate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    text: text,
-                    targetLanguage: currentTargetLanguage
-                }),
+                body: JSON.stringify(requestBody),
                 signal: controller.signal
             });
 
@@ -403,6 +478,22 @@
         if (charCounter) {
             charCounter.textContent = `${length}/5000`;
             charCounter.className = length > 5000 ? 'text-red-500 text-sm' : 'text-gray-500 text-sm';
+        }
+    });
+    
+    // 커스텀 프롬프트 문자 수 카운터
+    customPromptTextarea.addEventListener('input', (e) => {
+        const text = e.target.value;
+        const length = text.length;
+        promptCounter.textContent = `${length}/500`;
+        promptCounter.className = length > 500 ? 'text-red-500 text-xs' : 'text-gray-500 text-xs';
+    });
+    
+    // 전문가 모드 토글 이벤트
+    expertModeToggle.addEventListener('change', (e) => {
+        const isEnabled = e.target.checked;
+        if (isEnabled) {
+            showMessage('자동차 제조업 전문가 모드가 활성화되었습니다. 기술적이고 전문적인 번역을 제공합니다.', 'info');
         }
     });
     

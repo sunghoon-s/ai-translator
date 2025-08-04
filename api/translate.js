@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { text, targetLanguage } = req.body;
+    const { text, targetLanguage, customPrompt, translationStyle } = req.body;
 
     // 요청 본문 크기 확인
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -61,6 +61,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '지원되지 않는 언어입니다.' });
     }
 
+    // 커스텀 프롬프트 검증
+    if (customPrompt && typeof customPrompt !== 'string') {
+      return res.status(400).json({ error: '프롬프트 형식이 올바르지 않습니다.' });
+    }
+
+    // 커스텀 프롬프트 길이 제한 (500자)
+    if (customPrompt && customPrompt.length > 500) {
+      return res.status(400).json({ error: '프롬프트가 너무 깁니다. 500자 이하로 입력해주세요.' });
+    }
+
+    // 번역 스타일 검증
+    const allowedStyles = ['formal', 'casual', 'business', 'academic', 'creative', 'literal'];
+    if (translationStyle && !allowedStyles.includes(translationStyle)) {
+      return res.status(400).json({ error: '지원되지 않는 번역 스타일입니다.' });
+    }
+
     // 강화된 XSS 및 악성 콘텐츠 방지
     const dangerousPatterns = [
       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -86,8 +102,43 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
+    // 전문가 프롬프트 구성
+    const expertPrompt = `
+      **전문가 역할**: 너는 자동차 부품 제조사에 근무하는 생산기술 엔지니어이자 공정 개발 전문가야.
+      주로 자동차 엔진에 사용되는 고정밀 부품의 가공(절삭/연삭) 및 조립/검사 공정을 잘 알고,
+      공법을 개발하고 개선하는 엔지니어로서, 양산을 하기 위한 모든 기술적 검토를 하고 있어.
+
+      **목표**: 최종적으로는 가격/품질/납기 등 가성비 있는 최적의 양산라인을 구축하는 게 목표야.
+      제조공정 전반에 걸쳐, 기술적인 지식과 공정품질, 기술표준, 공정밸런스, 환경/안전 등 모든 것을
+      아울러서 공정 개발을 하는 거야.
+
+      **번역 스타일**: 
+      - 전문적이고 기술적인 용어를 사용하며
+      - 사실에 근거를 두고 정확하고, 간단하지만 구체적이고 명확한 번역
+      - 최신의 공정 트렌드와 경쟁사들의 공법을 반영한 번역
+      - 제조업 현장에서 실제 사용되는 전문 용어 활용
+    `;
+
+    // 사용자 커스텀 프롬프트가 있으면 추가
+    const additionalPrompt = customPrompt ? `\n\n**추가 번역 지침**: ${customPrompt}` : '';
+
+    // 번역 스타일 설정
+    const styleInstructions = {
+      formal: "격식 있고 공식적인 문체로 번역",
+      casual: "친근하고 일상적인 문체로 번역", 
+      business: "비즈니스 환경에 적합한 전문적 문체로 번역",
+      academic: "학술적이고 정확한 문체로 번역",
+      creative: "창의적이고 자연스러운 문체로 번역",
+      literal: "원문에 충실한 직역 위주로 번역"
+    };
+
+    const stylePrompt = translationStyle ? `\n\n**번역 스타일**: ${styleInstructions[translationStyle]}` : '';
+
     const prompt = `
-      You are an expert multilingual translator.
+      You are an expert multilingual translator with specialized knowledge in automotive manufacturing.
+      
+      ${expertPrompt}${additionalPrompt}${stylePrompt}
+
       First, detect the language of the provided "Source Text".
       Then, perform two translations: to ${targetLanguage} and to Korean.
       For each translation, provide a line-by-line phonetic transcription in Korean Hangul.
@@ -100,6 +151,8 @@ export default async function handler(req, res) {
       - For **Chinese**: For each key vocabulary word **in the Chinese translation**, add an object to the list containing: 'originalWord' (the Chinese word), 'koreanMeaning', 'reading' (the Pinyin with tone marks), and 'koreanPronunciation' (the Hangul representation of Pinyin).
       - If the source text is already Korean, the Korean translation should just be the original text.
       - Preserve all original line breaks in all translations.
+
+      **중요**: 자동차 제조업계의 최신 기술 동향과 전문 용어를 반영하여 번역하세요.
 
       Return the result as a single JSON object that strictly follows the schema.
 
