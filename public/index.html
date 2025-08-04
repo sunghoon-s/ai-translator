@@ -641,7 +641,7 @@
             // 기본 정보로 팝업 표시
             displayPopup(event, word, {
                 koreanPronunciation: '발음 정보 없음',
-                romanization: '발음 정보 없음',
+                romanization: `${word} + ${word}`,
                 example: `${word}를 사용한 예문입니다.`,
                 examplePronunciation: '예문 발음',
                 koreanTranslation: '예문 번역'
@@ -650,7 +650,6 @@
     }
     
     function displayPopup(event, word, wordInfo) {
-        console.log('displayPopup called with:', word, wordInfo); // 디버깅용
         popupWord.textContent = word;
         popupPronunciation.textContent = `(${wordInfo.romanization})`;
         popupExampleText.textContent = wordInfo.example;
@@ -693,24 +692,22 @@
         // 언어별 처리
         if (currentTargetLanguage === 'Japanese') {
             const jpData = getJapaneseWordData(word);
-            console.log('Japanese word data:', word, jpData); // 디버깅용
             wordData.koreanPronunciation = jpData.korean;
-            wordData.romanization = jpData.romaji + ' + ' + jpData.hiragana;
+            wordData.romanization = `${jpData.romaji} + ${jpData.hiragana}`;
             wordData.example = jpData.example;
             wordData.examplePronunciation = jpData.examplePronunciation;
             wordData.koreanTranslation = jpData.koreanTranslation;
-            console.log('Final wordData:', wordData); // 디버깅용
         } else if (currentTargetLanguage === 'English') {
             const enData = getEnglishWordData(word);
             wordData.koreanPronunciation = enData.korean;
-            wordData.romanization = enData.phonetic + ' + ' + enData.korean;
+            wordData.romanization = `${enData.phonetic} + ${enData.korean}`;
             wordData.example = enData.example;
             wordData.examplePronunciation = enData.examplePronunciation;
             wordData.koreanTranslation = enData.koreanTranslation;
         } else if (currentTargetLanguage === 'Chinese') {
             const cnData = getChineseWordData(word);
             wordData.koreanPronunciation = cnData.korean;
-            wordData.romanization = cnData.pinyin + ' + ' + cnData.korean;
+            wordData.romanization = `${cnData.pinyin} + ${cnData.korean}`;
             wordData.example = cnData.example;
             wordData.examplePronunciation = cnData.examplePronunciation;
             wordData.koreanTranslation = cnData.koreanTranslation;
@@ -810,7 +807,7 @@
         
         // 기본값 반환
         return {
-            korean: '알 수 없음',
+            korean: '뜻 모름',
             romaji: word,
             hiragana: word,
             example: `${word}は重要です。`,
