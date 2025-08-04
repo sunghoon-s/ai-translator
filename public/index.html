@@ -651,7 +651,7 @@
     
     function displayPopup(event, word, wordInfo) {
         popupWord.textContent = word;
-        popupPronunciation.textContent = `(${wordInfo.romanization} + ${wordInfo.koreanPronunciation})`;
+        popupPronunciation.textContent = `(${wordInfo.romanization})`;
         popupExampleText.textContent = wordInfo.example;
         popupExamplePronunciation.textContent = `(${wordInfo.examplePronunciation})`;
         popupKoreanTranslation.textContent = wordInfo.koreanTranslation;
@@ -700,14 +700,14 @@
         } else if (currentTargetLanguage === 'English') {
             const enData = getEnglishWordData(word);
             wordData.koreanPronunciation = enData.korean;
-            wordData.romanization = enData.phonetic;
+            wordData.romanization = enData.phonetic + ' + ' + enData.korean;
             wordData.example = enData.example;
             wordData.examplePronunciation = enData.examplePronunciation;
             wordData.koreanTranslation = enData.koreanTranslation;
         } else if (currentTargetLanguage === 'Chinese') {
             const cnData = getChineseWordData(word);
             wordData.koreanPronunciation = cnData.korean;
-            wordData.romanization = cnData.pinyin;
+            wordData.romanization = cnData.pinyin + ' + ' + cnData.korean;
             wordData.example = cnData.example;
             wordData.examplePronunciation = cnData.examplePronunciation;
             wordData.koreanTranslation = cnData.koreanTranslation;
