@@ -1,8 +1,26 @@
 export default async function handler(req, res) {
-  // CORS 헤더 설정
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // 환경변수 기반 CORS 헤더 설정
+  const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ['http://localhost:3000', 'http://localhost:8080'];
+  
+  const origin = req.headers.origin;
+  
+  // 개발 환경에서는 모든 localhost 허용
+  if (process.env.NODE_ENV === 'development' && origin?.includes('localhost')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  // 보안 헤더 추가
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
 
   // OPTIONS 요청 처리 (CORS preflight)
   if (req.method === 'OPTIONS') {
@@ -17,13 +35,49 @@ export default async function handler(req, res) {
   try {
     const { text, targetLanguage } = req.body;
 
-    // 입력 검증
-    if (!text || !text.trim()) {
+    // 요청 본문 크기 확인
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: '요청 데이터가 없습니다.' });
+    }
+
+    // 강화된 입력 검증
+    if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ error: '번역할 텍스트를 입력해주세요.' });
     }
 
-    if (!targetLanguage) {
-      return res.status(400).json({ error: '목표 언어를 선택해주세요.' });
+    // 텍스트 길이 제한 (5000자)
+    if (text.length > 5000) {
+      return res.status(400).json({ error: '텍스트가 너무 깁니다. 5000자 이하로 입력해주세요.' });
+    }
+
+    // 최소 텍스트 길이 확인
+    if (text.trim().length < 1) {
+      return res.status(400).json({ error: '번역할 내용이 너무 짧습니다.' });
+    }
+
+    // 허용된 언어 목록 검증
+    const allowedLanguages = ['Japanese', 'Chinese', 'English'];
+    if (!targetLanguage || typeof targetLanguage !== 'string' || !allowedLanguages.includes(targetLanguage)) {
+      return res.status(400).json({ error: '지원되지 않는 언어입니다.' });
+    }
+
+    // 강화된 XSS 및 악성 콘텐츠 방지
+    const dangerousPatterns = [
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /javascript:/gi,
+      /vbscript:/gi,
+      /onload\s*=/gi,
+      /onerror\s*=/gi,
+      /onclick\s*=/gi
+    ];
+    
+    let sanitizedText = text;
+    for (const pattern of dangerousPatterns) {
+      const cleaned = sanitizedText.replace(pattern, '');
+      if (cleaned !== sanitizedText) {
+        return res.status(400).json({ error: '유효하지 않은 입력입니다.' });
+      }
+      sanitizedText = cleaned;
     }
 
     // 환경변수에서 API 키 가져오기
@@ -49,7 +103,7 @@ export default async function handler(req, res) {
 
       Return the result as a single JSON object that strictly follows the schema.
 
-      Source Text: "${text}"
+      Source Text: "${sanitizedText}"
     `;
 
     const payload = {
@@ -67,7 +121,8 @@ export default async function handler(req, res) {
                 properties: {
                   translation: { type: "STRING" },
                   pronunciation: { type: "STRING" }
-                }
+                },
+                required: ["translation", "pronunciation"]
               }
             },
             koreanTranslation: {
@@ -77,7 +132,8 @@ export default async function handler(req, res) {
                 properties: {
                   translation: { type: "STRING" },
                   pronunciation: { type: "STRING" }
-                }
+                },
+                required: ["translation", "pronunciation"]
               }
             },
             wordStudy: {
@@ -99,25 +155,44 @@ export default async function handler(req, res) {
       }
     };
 
+    // Google Gemini API는 URL 파라미터 방식 사용 (Google 공식 방식)
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      // 타임아웃 설정 (30초)
+      signal: AbortSignal.timeout(30000)
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini API 오류:', response.status, errorText);
       throw new Error(`API 요청 실패: ${response.status}`);
     }
 
     const result = await response.json();
     
     if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error('예상치 못한 API 응답:', result);
       throw new Error("API 응답 형식이 올바르지 않습니다.");
     }
 
-    const translationData = JSON.parse(result.candidates[0].content.parts[0].text);
+    let translationData;
+    try {
+      translationData = JSON.parse(result.candidates[0].content.parts[0].text);
+    } catch (parseError) {
+      console.error('JSON 파싱 오류:', parseError, result.candidates[0].content.parts[0].text);
+      throw new Error("번역 결과를 처리할 수 없습니다.");
+    }
+
+    // 응답 데이터 검증
+    if (!translationData.detectedLanguage || !translationData.targetTranslation || !translationData.koreanTranslation) {
+      throw new Error("번역 결과가 완전하지 않습니다.");
+    }
     
     return res.status(200).json({
       success: true,
@@ -125,10 +200,63 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('번역 API 오류:', error);
+    console.error('번역 API 오류:', {
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 타임아웃 에러 처리
+    if (error.name === 'AbortError' || error.message.includes('timeout')) {
+      return res.status(408).json({ 
+        error: '요청 시간이 초과되었습니다. 텍스트를 줄이고 다시 시도해 주세요.',
+        code: 'REQUEST_TIMEOUT'
+      });
+    }
+    
+    // 네트워크 에러 처리
+    if (error.message.includes('fetch failed') || error.message.includes('ENOTFOUND')) {
+      return res.status(503).json({ 
+        error: '번역 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+        code: 'SERVICE_UNAVAILABLE'
+      });
+    }
+    
+    // API 에러 처리
+    if (error.message.includes('API 요청 실패: 429')) {
+      return res.status(429).json({ 
+        error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+        code: 'RATE_LIMIT_EXCEEDED'
+      });
+    }
+    
+    if (error.message.includes('API 요청 실패: 401')) {
+      return res.status(500).json({ 
+        error: '인증에 문제가 발생했습니다.',
+        code: 'AUTHENTICATION_ERROR'
+      });
+    }
+    
+    if (error.message.includes('API 요청 실패')) {
+      return res.status(503).json({ 
+        error: '번역 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+        code: 'SERVICE_UNAVAILABLE'
+      });
+    }
+    
+    // 입력 검증 에러
+    if (error.message.includes('텍스트가 너무 깁니다') || error.message.includes('유효하지 않은 입력')) {
+      return res.status(400).json({ 
+        error: error.message,
+        code: 'INVALID_INPUT'
+      });
+    }
+    
+    // 기본 에러
     return res.status(500).json({ 
       error: '번역 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-      details: error.message
+      code: 'INTERNAL_ERROR',
+      ...(process.env.NODE_ENV === 'development' && { details: error.message })
     });
   }
 }

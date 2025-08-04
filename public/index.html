@@ -114,6 +114,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <h2><i class="fas fa-keyboard mr-2 text-blue-500"></i>번역할 내용 (자동 언어 감지)</h2>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm text-gray-500">Ctrl+Enter로 빠른 번역</span>
+                        <span id="char-counter" class="text-sm text-gray-500">0/5000</span>
+                    </div>
                 </div>
                 <div class="panel-body">
                     <textarea id="source-text-input" rows="5" placeholder="한국어, 영어, 일본어, 중국어로 내용을 입력하세요..."></textarea>
@@ -185,6 +189,8 @@
     const wordStudyList = document.getElementById('word-study-list');
 
     let currentTargetLanguage = 'Japanese';
+    let isTranslating = false; // 번역 중 상태 관리
+    let debounceTimer = null; // 디바운스 타이머
 
     const langDisplayNames = {
         Japanese: '일본어 (Japanese)',
@@ -201,19 +207,79 @@
         }
     });
 
-    function showMessage(content) {
+    // 유틸리티 함수들
+    function showMessage(content, type = 'error') {
+        const messageTitle = document.getElementById('message-title');
+        const messageContent = document.getElementById('message-content');
+        
+        messageTitle.textContent = type === 'error' ? '오류' : '알림';
+        messageTitle.className = type === 'error' ? 'text-xl font-bold mb-4 text-red-600' : 'text-xl font-bold mb-4 text-blue-600';
         messageContent.textContent = content;
         messageModal.classList.remove('hidden');
+    }
+    
+    // HTML 이스케이프 함수
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+    
+    // 텍스트 검증 함수
+    function validateText(text) {
+        if (!text || !text.trim()) {
+            return { valid: false, message: '번역할 내용을 입력해주세요.' };
+        }
+        
+        if (text.length > 5000) {
+            return { valid: false, message: '텍스트가 너무 깁니다. 5000자 이하로 입력해주세요.' };
+        }
+        
+        if (text.trim().length < 1) {
+            return { valid: false, message: '번역할 내용이 너무 짧습니다.' };
+        }
+        
+        // 악성 스크립트 검증
+        const dangerousPatterns = [
+            /<script/i,
+            /javascript:/i,
+            /vbscript:/i,
+            /onload\s*=/i,
+            /onerror\s*=/i,
+            /onclick\s*=/i
+        ];
+        
+        for (const pattern of dangerousPatterns) {
+            if (pattern.test(text)) {
+                return { valid: false, message: '유효하지 않은 입력입니다.' };
+            }
+        }
+        
+        return { valid: true };
     }
     messageCloseBtn.addEventListener('click', () => messageModal.classList.add('hidden'));
 
     async function translateText() {
-        const text = sourceTextInput.value;
-        if (!text.trim()) {
-            showMessage('번역할 내용을 입력해주세요.');
+        // 이미 번역 중이면 중복 요청 방지
+        if (isTranslating) {
+            showMessage('번역이 진행 중입니다. 잠시만 기다려 주세요.');
             return;
         }
 
+        const text = sourceTextInput.value;
+        
+        // 텍스트 검증
+        const validation = validateText(text);
+        if (!validation.valid) {
+            showMessage(validation.message);
+            return;
+        }
+
+        // 번역 시작 상태 설정
+        isTranslating = true;
+        translateBtn.disabled = true;
+        translateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>번역 중...';
+        
         targetLoader.classList.add('visible');
         koreanLoader.classList.add('visible');
         targetOutputContent.innerHTML = '';
@@ -222,6 +288,10 @@
         wordStudyList.innerHTML = '';
 
         try {
+            // 타임아웃 설정 (35초)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 35000);
+
             // Vercel API 엔드포인트로 요청
             const response = await fetch('/api/translate', {
                 method: 'POST',
@@ -231,11 +301,14 @@
                 body: JSON.stringify({
                     text: text,
                     targetLanguage: currentTargetLanguage
-                })
+                }),
+                signal: controller.signal
             });
 
+            clearTimeout(timeoutId);
+
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `API 요청 실패: ${response.status}`);
             }
 
@@ -249,9 +322,12 @@
             
             const formatOutput = (lines) => {
                 if (lines && Array.isArray(lines)) {
-                    return lines.map(line => 
-                        `<p class="text-lg">${line.translation || '&nbsp;'} <span class="pronunciation">(${line.pronunciation || ''})</span></p>`
-                    ).join('');
+                    return lines.map(line => {
+                        const translation = escapeHtml(line.translation || '');
+                        const pronunciation = escapeHtml(line.pronunciation || '');
+                        
+                        return `<p class="text-lg">${translation} <span class="pronunciation">(${pronunciation})</span></p>`;
+                    }).join('');
                 }
                 return '';
             };
@@ -261,12 +337,17 @@
 
             if ((currentTargetLanguage === 'Japanese' || currentTargetLanguage === 'English' || currentTargetLanguage === 'Chinese') && translationData.wordStudy && translationData.wordStudy.length > 0) {
                 const wordListHtml = translationData.wordStudy.map(word => {
+                    const originalWord = escapeHtml(word.originalWord);
+                    const koreanMeaning = escapeHtml(word.koreanMeaning);
+                    const reading = escapeHtml(word.reading);
+                    const koreanPronunciation = escapeHtml(word.koreanPronunciation);
+                    
                     if (currentTargetLanguage === 'Japanese') {
-                        return `<div>${word.originalWord} (${word.koreanMeaning}, ${word.reading}, ${word.koreanPronunciation})</div>`;
+                        return `<div>${originalWord} (${koreanMeaning}, ${reading}, ${koreanPronunciation})</div>`;
                     } else if (currentTargetLanguage === 'English') {
-                        return `<div>${word.originalWord} (${word.koreanMeaning}, ${word.reading})</div>`;
+                        return `<div>${originalWord} (${koreanMeaning}, ${reading})</div>`;
                     } else { // Chinese
-                        return `<div>${word.originalWord} (${word.koreanMeaning}, ${word.koreanPronunciation}, ${word.reading})</div>`;
+                        return `<div>${originalWord} (${koreanMeaning}, ${koreanPronunciation}, ${reading})</div>`;
                     }
                 }).join('');
                 wordStudyList.innerHTML = wordListHtml;
@@ -275,16 +356,55 @@
 
         } catch (error) {
             console.error('번역 오류:', error);
-            showMessage(error.message || '번역 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            
+            // 에러 타입별 세분화된 메시지
+            let errorMessage = '번역 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+            
+            if (error.name === 'AbortError' || error.message.includes('timeout')) {
+                errorMessage = '요청 시간이 초과되었습니다. 텍스트를 줄이고 다시 시도해 주세요.';
+            } else if (error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
+                errorMessage = '네트워크 연결을 확인해 주세요.';
+            } else if (error.message.includes('API 요청 실패: 429')) {
+                errorMessage = '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+            } else if (error.message.includes('API 요청 실패: 500')) {
+                errorMessage = '서버에 일시적인 문제가 발생했습니다.';
+            }
+            
+            showMessage(errorMessage);
             targetOutputContent.innerHTML = '';
             koreanOutputContent.innerHTML = '';
         } finally {
+            // 번역 완료 상태로 복원
+            isTranslating = false;
+            translateBtn.disabled = false;
+            translateBtn.innerHTML = '<i class="fas fa-language mr-2"></i>번역하기';
             targetLoader.classList.remove('visible');
             koreanLoader.classList.remove('visible');
         }
     }
 
     translateBtn.addEventListener('click', translateText);
+    
+    // Enter 키로 번역 실행 (Ctrl+Enter)
+    sourceTextInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            translateText();
+        }
+    });
+    
+    // 실시간 문자 수 카운터 추가
+    sourceTextInput.addEventListener('input', (e) => {
+        const text = e.target.value;
+        const length = text.length;
+        
+        // 문자 수 표시 요소가 있다면 업데이트
+        const charCounter = document.getElementById('char-counter');
+        if (charCounter) {
+            charCounter.textContent = `${length}/5000`;
+            charCounter.className = length > 5000 ? 'text-red-500 text-sm' : 'text-gray-500 text-sm';
+        }
+    });
     
     targetLangTitle.innerText = `${langDisplayNames[currentTargetLanguage]} 번역 결과`;
 
