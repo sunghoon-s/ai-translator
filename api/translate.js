@@ -102,21 +102,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    // 전문가 프롬프트 구성
+    // 전문가 프롬프트 구성 (최적화된 버전)
     const expertPrompt = `
-      **전문가 역할**: 너는 자동차 부품 제조사에 근무하는 생산기술 엔지니어이자 공정 개발 전문가야.
-      주로 자동차 엔진에 사용되는 고정밀 부품의 가공(절삭/연삭) 및 조립/검사 공정을 잘 알고,
-      공법을 개발하고 개선하는 엔지니어로서, 양산을 하기 위한 모든 기술적 검토를 하고 있어.
-
-      **목표**: 최종적으로는 가격/품질/납기 등 가성비 있는 최적의 양산라인을 구축하는 게 목표야.
-      제조공정 전반에 걸쳐, 기술적인 지식과 공정품질, 기술표준, 공정밸런스, 환경/안전 등 모든 것을
-      아울러서 공정 개발을 하는 거야.
-
-      **번역 스타일**: 
-      - 전문적이고 기술적인 용어를 사용하며
-      - 사실에 근거를 두고 정확하고, 간단하지만 구체적이고 명확한 번역
-      - 최신의 공정 트렌드와 경쟁사들의 공법을 반영한 번역
-      - 제조업 현장에서 실제 사용되는 전문 용어 활용
+      **역할**: 자동차 제조업 전문가 | **목표**: 기술적이고 정확한 번역
+      **스타일**: 전문 용어 사용, 간결하고 명확한 번역, 현장 실무 용어 활용
     `;
 
     // 사용자 커스텀 프롬프트가 있으면 추가
@@ -139,35 +128,20 @@ export default async function handler(req, res) {
     const isSingleLine = originalLineCount === 1;
 
     const prompt = `
-      You are an expert multilingual translator with specialized knowledge in automotive manufacturing.
-      
+      You are a multilingual translator specialized in automotive manufacturing.
       ${expertPrompt}${additionalPrompt}${stylePrompt}
 
-      First, detect the language of the provided "Source Text".
-      Then, perform two translations: to ${targetLanguage} and to Korean.
-      For each translation, provide a line-by-line phonetic transcription in Korean Hangul.
+      Detect source language, then translate to ${targetLanguage} and Korean.
+      Provide Korean phonetic transcription for each translation.
 
-      **Important Translation Structure Instructions:**
-      - The source text has ${originalLineCount} line(s).
-      ${isSingleLine ? 
-        '- Since the source is a single line/sentence, provide the translation as a SINGLE line/sentence as well. Do NOT split into multiple lines unless absolutely necessary for readability.' :
-        '- Preserve the original line structure and breaks in your translation.'
-      }
-      - Each translation should maintain the same logical structure as the source text.
+      **Structure**: ${originalLineCount} line(s) - ${isSingleLine ? 'Keep as single line' : 'Preserve line breaks'}
 
-      **Crucial Instructions for Word Study List:**
-      - The "wordStudy" list MUST be generated based on the words that appear in the **final ${targetLanguage} translation**, NOT from the original "Source Text".
-      - If the target language is Japanese, English, OR Chinese, you MUST create this "wordStudy" list.
-      - For **Japanese**: For each Kanji word **in the Japanese translation**, add an object to the list containing: 'originalWord' (the Kanji), 'koreanMeaning', 'reading' (the hiragana), and 'koreanPronunciation'.
-      - For **English**: For each key vocabulary word **in the English translation**, add an object to the list containing: 'originalWord' (the English word), 'koreanMeaning', and 'reading' (the IPA phonetic transcription, e.g., /həˈloʊ/). The 'koreanPronunciation' field for English words should be an empty string.
-      - For **Chinese**: For each key vocabulary word **in the Chinese translation**, add an object to the list containing: 'originalWord' (the Chinese word), 'koreanMeaning', 'reading' (the Pinyin with tone marks), and 'koreanPronunciation' (the Hangul representation of Pinyin).
-      - If the source text is already Korean, the Korean translation should just be the original text.
+      **Word Study**: Generate from ${targetLanguage} translation words only.
+      ${targetLanguage === 'Japanese' ? '- Japanese: originalWord (Kanji), koreanMeaning, reading (hiragana), koreanPronunciation' : ''}
+      ${targetLanguage === 'English' ? '- English: originalWord, koreanMeaning, reading (IPA)' : ''}
+      ${targetLanguage === 'Chinese' ? '- Chinese: originalWord, koreanMeaning, reading (Pinyin), koreanPronunciation' : ''}
 
-      **중요**: 자동차 제조업계의 최신 기술 동향과 전문 용어를 반영하여 번역하세요.
-
-      Return the result as a single JSON object that strictly follows the schema.
-
-      Source Text: "${sanitizedText}"
+      Source: "${sanitizedText}"
     `;
 
     const payload = {
@@ -215,12 +189,17 @@ export default async function handler(req, res) {
             }
           },
           required: ["detectedLanguage", "targetTranslation", "koreanTranslation"]
-        }
+        },
+        // 속도 최적화 설정
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+        topP: 0.8,
+        topK: 10
       }
     };
 
-    // Google Gemini API는 URL 파라미터 방식 사용 (Google 공식 방식)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    // Google Gemini API는 URL 파라미터 방식 사용 (속도 최적화된 모델)
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -228,8 +207,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload),
-      // 타임아웃 설정 (30초)
-      signal: AbortSignal.timeout(30000)
+      // 타임아웃 설정 (20초로 단축)
+      signal: AbortSignal.timeout(20000)
     });
 
     if (!response.ok) {

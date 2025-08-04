@@ -427,19 +427,19 @@
         // 번역 시작 상태 설정
         isTranslating = true;
         translateBtn.disabled = true;
-        translateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>번역 중...';
+        translateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>번역 중... (약 10-20초)';
         
         targetLoader.classList.add('visible');
         koreanLoader.classList.add('visible');
-        targetOutputContent.innerHTML = '';
-        koreanOutputContent.innerHTML = '';
+        targetOutputContent.innerHTML = '<div class="text-gray-500 text-center py-4">번역을 처리하고 있습니다...</div>';
+        koreanOutputContent.innerHTML = '<div class="text-gray-500 text-center py-4">번역을 처리하고 있습니다...</div>';
         wordStudySection.style.display = 'none';
         wordStudyList.innerHTML = '';
 
         try {
-            // 타임아웃 설정 (35초)
+            // 타임아웃 설정 (25초로 단축)
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 35000);
+            const timeoutId = setTimeout(() => controller.abort(), 25000);
 
             // 전문가 모드 및 사용자 설정 가져오기
             const isExpertMode = expertModeToggle.checked;
