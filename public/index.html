@@ -163,8 +163,8 @@
     <div class="max-w-3xl mx-auto space-y-6">
         <header class="text-center">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800">
-                <i class="fas fa-industry mr-3 text-blue-600"></i>
-                자동차 제조업 전문 AI 번역기
+                <i class="fas fa-language mr-3 text-blue-600"></i>
+                AI 자동 번역기
             </h1>
             <p class="mt-2 text-gray-600">전문 기술 번역 서비스</p>
             <div class="mt-2 flex justify-center items-center text-sm text-blue-600">
@@ -179,7 +179,7 @@
                 <div class="panel-header">
                     <h2><i class="fas fa-keyboard mr-2 text-blue-500"></i>번역할 내용 (자동 언어 감지)</h2>
                     <div class="flex justify-between items-center mt-2">
-                        <span class="text-sm text-gray-500">Enter로 빠른 번역</span>
+                        <span class="text-sm text-gray-500"></span>
                         <span id="char-counter" class="text-sm text-gray-500">0/5000</span>
                     </div>
                 </div>
@@ -563,14 +563,6 @@
 
     translateBtn.addEventListener('click', translateText);
     
-    // Enter 키로 번역 실행
-    sourceTextInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            translateText();
-        }
-    });
-    
     // 실시간 문자 수 카운터 추가
     sourceTextInput.addEventListener('input', (e) => {
         const text = e.target.value;
@@ -630,18 +622,20 @@
             console.error('단어 정보 가져오기 실패:', error);
             // 기본 정보로 팝업 표시
             displayPopup(event, word, {
-                pronunciation: '발음 정보 없음',
-                example: word + '를 사용한 예문입니다.',
-                examplePronunciation: '예문 발음'
+                koreanPronunciation: '발음 정보 없음',
+                romanization: '',
+                example: `${word}를 사용한 예문입니다.`,
+                examplePronunciation: '예문 발음',
+                koreanTranslation: '예문 번역'
             });
         }
     }
     
     function displayPopup(event, word, wordInfo) {
         popupWord.textContent = word;
-        popupPronunciation.textContent = `${wordInfo.koreanPronunciation || ''} (${wordInfo.romanization || ''})`;
-        popupExampleText.textContent = wordInfo.example || `${word}를 사용한 예문입니다.`;
-        popupExamplePronunciation.textContent = wordInfo.examplePronunciation || '';
+        popupPronunciation.textContent = `${wordInfo.koreanPronunciation} (${wordInfo.romanization})`;
+        popupExampleText.textContent = wordInfo.example;
+        popupExamplePronunciation.textContent = `${wordInfo.examplePronunciation} - ${wordInfo.koreanTranslation}`;
         
         // 팝업 위치 계산
         const rect = event.target.getBoundingClientRect();
@@ -668,62 +662,307 @@
     }
     
     async function getWordInfo(word) {
-        // 간단한 단어 정보 생성 (실제로는 사전 API를 호출할 수 있음)
         const wordData = {
             koreanPronunciation: '',
             romanization: '',
             example: '',
-            examplePronunciation: ''
+            examplePronunciation: '',
+            koreanTranslation: ''
         };
         
         // 언어별 처리
         if (currentTargetLanguage === 'Japanese') {
-            wordData.koreanPronunciation = await getKoreanPronunciation(word);
-            wordData.romanization = await getRomanization(word);
-            wordData.example = `${word}は重要です。`;
-            wordData.examplePronunciation = '(와 중요데스)';
+            const jpData = getJapaneseWordData(word);
+            wordData.koreanPronunciation = jpData.korean;
+            wordData.romanization = jpData.romaji;
+            wordData.example = jpData.example;
+            wordData.examplePronunciation = jpData.examplePronunciation;
+            wordData.koreanTranslation = jpData.koreanTranslation;
         } else if (currentTargetLanguage === 'English') {
-            wordData.koreanPronunciation = await getKoreanPronunciation(word);
-            wordData.romanization = `[${word.toLowerCase()}]`;
-            wordData.example = `This ${word} is important.`;
-            wordData.examplePronunciation = '(디스 ' + wordData.koreanPronunciation + ' 이즈 임포턴트)';
+            const enData = getEnglishWordData(word);
+            wordData.koreanPronunciation = enData.korean;
+            wordData.romanization = enData.phonetic;
+            wordData.example = enData.example;
+            wordData.examplePronunciation = enData.examplePronunciation;
+            wordData.koreanTranslation = enData.koreanTranslation;
         } else if (currentTargetLanguage === 'Chinese') {
-            wordData.koreanPronunciation = await getKoreanPronunciation(word);
-            wordData.romanization = await getPinyin(word);
-            wordData.example = `这个${word}很重要。`;
-            wordData.examplePronunciation = '(저거 ' + wordData.koreanPronunciation + ' 헌 중야오)';
+            const cnData = getChineseWordData(word);
+            wordData.koreanPronunciation = cnData.korean;
+            wordData.romanization = cnData.pinyin;
+            wordData.example = cnData.example;
+            wordData.examplePronunciation = cnData.examplePronunciation;
+            wordData.koreanTranslation = cnData.koreanTranslation;
         }
         
         return wordData;
     }
     
-    async function getKoreanPronunciation(word) {
-        // 간단한 한글 발음 매핑 (실제로는 더 정교한 변환 필요)
-        const pronunciationMap = {
-            'car': '카',
-            'engine': '엔진',
-            'brake': '브레이크',
-            'wheel': '휠',
-            'door': '도어',
-            'window': '윈도우',
-            'important': '임포턴트',
-            'technology': '테크놀로지',
-            'manufacturing': '매뉴팩처링',
-            'automotive': '오토모티브'
+    function getJapaneseWordData(word) {
+        const wordDatabase = {
+            'エンジン': {
+                korean: '엔진',
+                romaji: 'enjin',
+                example: 'エンジンの音が大きいです。',
+                examplePronunciation: '엔진노 오토가 오키이데스',
+                koreanTranslation: '엔진 소리가 큽니다.'
+            },
+            'ブレーキ': {
+                korean: '브레이키',
+                romaji: 'burēki',
+                example: 'ブレーキを踏んでください。',
+                examplePronunciation: '브레이키오 푼데쿠다사이',
+                koreanTranslation: '브레이크를 밟아주세요.'
+            },
+            'タイヤ': {
+                korean: '타이야',
+                romaji: 'taiya',
+                example: 'タイヤの空気圧を確認します。',
+                examplePronunciation: '타이야노 쿠우키아츠오 카쿠닌시마스',
+                koreanTranslation: '타이어의 공기압을 확인합니다.'
+            },
+            'ドア': {
+                korean: '도아',
+                romaji: 'doa',
+                example: 'ドアが開いています。',
+                examplePronunciation: '도아가 아이테이마스',
+                koreanTranslation: '문이 열려있습니다.'
+            },
+            '窓': {
+                korean: '마도',
+                romaji: 'mado',
+                example: '窓を開けてください。',
+                examplePronunciation: '마도오 아케테쿠다사이',
+                koreanTranslation: '창문을 열어주세요.'
+            },
+            '重要': {
+                korean: '쥬우요우',
+                romaji: 'jūyō',
+                example: 'この部品は重要です。',
+                examplePronunciation: '코노 부힌와 쥬우요우데스',
+                koreanTranslation: '이 부품은 중요합니다.'
+            },
+            '技術': {
+                korean: '기쥬츠',
+                romaji: 'gijutsu',
+                example: '新しい技術を開発しました。',
+                examplePronunciation: '아타라시이 기쥬츠오 카이하츠시마시타',
+                koreanTranslation: '새로운 기술을 개발했습니다.'
+            },
+            '製造': {
+                korean: '세이조우',
+                romaji: 'seizō',
+                example: '自動車を製造しています。',
+                examplePronunciation: '지도우샤오 세이조우시테이마스',
+                koreanTranslation: '자동차를 제조하고 있습니다.'
+            },
+            '品質': {
+                korean: '힌시츠',
+                romaji: 'hinshitsu',
+                example: '品質管理が大切です。',
+                examplePronunciation: '힌시츠칸리가 타이세츠데스',
+                koreanTranslation: '품질 관리가 중요합니다.'
+            },
+            'です': {
+                korean: '데스',
+                romaji: 'desu',
+                example: '今日は晴れです。',
+                examplePronunciation: '쿄우와 하레데스',
+                koreanTranslation: '오늘은 맑습니다.'
+            }
         };
         
-        return pronunciationMap[word.toLowerCase()] || word;
+        const data = wordDatabase[word];
+        if (data) {
+            return data;
+        }
+        
+        // 기본값 반환
+        return {
+            korean: word,
+            romaji: word,
+            example: `${word}は重要です。`,
+            examplePronunciation: `${word}와 쥬우요우데스`,
+            koreanTranslation: `${word}는 중요합니다.`
+        };
     }
     
-    async function getRomanization(word) {
-        // 일본어 로마자 표기 (간단한 예시)
-        const romaji = word.replace(/は/g, 'wa').replace(/を/g, 'wo');
-        return romaji;
+    function getEnglishWordData(word) {
+        const wordDatabase = {
+            'engine': {
+                korean: '엔진',
+                phonetic: 'ˈendʒɪn',
+                example: 'The engine is running smoothly.',
+                examplePronunciation: '디 엔진 이즈 러닝 스무들리',
+                koreanTranslation: '엔진이 부드럽게 작동하고 있습니다.'
+            },
+            'brake': {
+                korean: '브레이크',
+                phonetic: 'breɪk',
+                example: 'Please apply the brake slowly.',
+                examplePronunciation: '플리즈 어플라이 더 브레이크 슬로울리',
+                koreanTranslation: '브레이크를 천천히 밟아주세요.'
+            },
+            'wheel': {
+                korean: '휠',
+                phonetic: 'wiːl',
+                example: 'The wheel is turning smoothly.',
+                examplePronunciation: '더 휠 이즈 터닝 스무들리',
+                koreanTranslation: '바퀴가 부드럽게 돌고 있습니다.'
+            },
+            'door': {
+                korean: '도어',
+                phonetic: 'dɔːr',
+                example: 'Close the door carefully.',
+                examplePronunciation: '클로즈 더 도어 케어풀리',
+                koreanTranslation: '문을 조심히 닫으세요.'
+            },
+            'window': {
+                korean: '윈도우',
+                phonetic: 'ˈwɪndoʊ',
+                example: 'Open the window for fresh air.',
+                examplePronunciation: '오픈 더 윈도우 포 프레시 에어',
+                koreanTranslation: '신선한 공기를 위해 창문을 여세요.'
+            },
+            'car': {
+                korean: '카',
+                phonetic: 'kɑːr',
+                example: 'This car is very efficient.',
+                examplePronunciation: '디스 카 이즈 베리 이피션트',
+                koreanTranslation: '이 차는 매우 효율적입니다.'
+            },
+            'technology': {
+                korean: '테크놀로지',
+                phonetic: 'tekˈnɑːlədʒi',
+                example: 'Advanced technology improves safety.',
+                examplePronunciation: '어드밴스드 테크놀로지 임프루브즈 세이프티',
+                koreanTranslation: '첨단 기술이 안전성을 향상시킵니다.'
+            },
+            'manufacturing': {
+                korean: '매뉴팩처링',
+                phonetic: 'ˌmænjuˈfæktʃərɪŋ',
+                example: 'Manufacturing processes are automated.',
+                examplePronunciation: '매뉴팩처링 프로세시즈 아 오토메이티드',
+                koreanTranslation: '제조 과정이 자동화되어 있습니다.'
+            },
+            'quality': {
+                korean: '퀄리티',
+                phonetic: 'ˈkwɑːləti',
+                example: 'Quality control is essential.',
+                examplePronunciation: '퀄리티 컨트롤 이즈 에센셜',
+                koreanTranslation: '품질 관리는 필수적입니다.'
+            },
+            'important': {
+                korean: '임포턴트',
+                phonetic: 'ɪmˈpɔːrtənt',
+                example: 'Safety is very important.',
+                examplePronunciation: '세이프티 이즈 베리 임포턴트',
+                koreanTranslation: '안전은 매우 중요합니다.'
+            }
+        };
+        
+        const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
+        const data = wordDatabase[cleanWord];
+        if (data) {
+            return data;
+        }
+        
+        // 기본값 반환
+        return {
+            korean: word,
+            phonetic: word,
+            example: `This ${word} is important.`,
+            examplePronunciation: `디스 ${word} 이즈 임포턴트`,
+            koreanTranslation: `이 ${word}는 중요합니다.`
+        };
     }
     
-    async function getPinyin(word) {
-        // 중국어 병음 (간단한 예시)
-        return word + ' (pinyin)';
+    function getChineseWordData(word) {
+        const wordDatabase = {
+            '引擎': {
+                korean: '인칭',
+                pinyin: 'yǐnqíng',
+                example: '引擎运转很顺畅。',
+                examplePronunciation: '인칭 윈즈완 헌 순창',
+                koreanTranslation: '엔진이 매우 부드럽게 작동합니다.'
+            },
+            '刹车': {
+                korean: '샤처',
+                pinyin: 'shāchē',
+                example: '请慢慢踩刹车。',
+                examplePronunciation: '칭 만만 차이 샤처',
+                koreanTranslation: '브레이크를 천천히 밟아주세요.'
+            },
+            '轮胎': {
+                korean: '룬타이',
+                pinyin: 'lúntāi',
+                example: '轮胎需要检查。',
+                examplePronunciation: '룬타이 쉬야오 지엔차',
+                koreanTranslation: '타이어를 점검해야 합니다.'
+            },
+            '门': {
+                korean: '먼',
+                pinyin: 'mén',
+                example: '请关门。',
+                examplePronunciation: '칭 관 먼',
+                koreanTranslation: '문을 닫아주세요.'
+            },
+            '窗户': {
+                korean: '창후',
+                pinyin: 'chuānghu',
+                example: '打开窗户通风。',
+                examplePronunciation: '다카이 창후 통펑',
+                koreanTranslation: '창문을 열어서 환기하세요.'
+            },
+            '汽车': {
+                korean: '치처',
+                pinyin: 'qìchē',
+                example: '这辆汽车很先进。',
+                examplePronunciation: '저량 치처 헌 시엔진',
+                koreanTranslation: '이 자동차는 매우 첨진합니다.'
+            },
+            '技术': {
+                korean: '지슈',
+                pinyin: 'jìshù',
+                example: '新技术提高了效率。',
+                examplePronunciation: '신 지슈 티가오러 샤오뤼',
+                koreanTranslation: '새로운 기술이 효율성을 높였습니다.'
+            },
+            '制造': {
+                korean: '즈자오',
+                pinyin: 'zhìzào',
+                example: '制造过程很复杂。',
+                examplePronunciation: '즈자오 구어청 헌 푸자',
+                koreanTranslation: '제조 과정이 매우 복잡합니다.'
+            },
+            '质量': {
+                korean: '즈량',
+                pinyin: 'zhìliàng',
+                example: '质量控制很重要。',
+                examplePronunciation: '즈량 콩즈 헌 중야오',
+                koreanTranslation: '품질 관리가 매우 중요합니다.'
+            },
+            '重要': {
+                korean: '중야오',
+                pinyin: 'zhòngyào',
+                example: '安全很重要。',
+                examplePronunciation: '안취안 헌 중야오',
+                koreanTranslation: '안전이 매우 중요합니다.'
+            }
+        };
+        
+        const data = wordDatabase[word];
+        if (data) {
+            return data;
+        }
+        
+        // 기본값 반환
+        return {
+            korean: word,
+            pinyin: word,
+            example: `这个${word}很重要。`,
+            examplePronunciation: `저거 ${word} 헌 중야오`,
+            koreanTranslation: `이 ${word}는 매우 중요합니다.`
+        };
     }
     
     function makeTextHoverable(text, container) {
