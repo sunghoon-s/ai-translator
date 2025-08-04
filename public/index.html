@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>자동차 제조업 전문 AI 번역기 | 생산기술 엔지니어용</title>
+    <title>AI 자동 번역기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -109,10 +109,10 @@
                 <i class="fas fa-industry mr-3 text-blue-600"></i>
                 자동차 제조업 전문 AI 번역기
             </h1>
-            <p class="mt-2 text-gray-600">생산기술 엔지니어를 위한 전문적이고 기술적인 번역 서비스</p>
+            <p class="mt-2 text-gray-600">전문 기술 번역 서비스</p>
             <div class="mt-2 flex justify-center items-center text-sm text-blue-600">
                 <i class="fas fa-check-circle mr-1"></i>
-                <span>절삭/연삭 공정 | 조립/검사 | 양산 라인 구축 전문</span>
+                <span> </span>
             </div>
         </header>
 
@@ -122,7 +122,7 @@
                 <div class="panel-header">
                     <h2><i class="fas fa-keyboard mr-2 text-blue-500"></i>번역할 내용 (자동 언어 감지)</h2>
                     <div class="flex justify-between items-center mt-2">
-                        <span class="text-sm text-gray-500">Ctrl+Enter로 빠른 번역</span>
+                        <span class="text-sm text-gray-500">Enter로 빠른 번역</span>
                         <span id="char-counter" class="text-sm text-gray-500">0/5000</span>
                     </div>
                 </div>
@@ -143,50 +143,6 @@
                     <button id="translate-btn" class="w-full sm:w-auto flex-grow bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <i class="fas fa-language mr-2"></i>번역하기
                     </button>
-                </div>
-                
-                <!-- 전문가 모드 및 스타일 설정 -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3><i class="fas fa-cogs mr-2 text-purple-500"></i>전문가 번역 설정</h3>
-                    </div>
-                    <div class="panel-body">
-                        <!-- 전문가 모드 토글 -->
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center">
-                                <i class="fas fa-industry mr-2 text-blue-500"></i>
-                                <span class="font-medium">자동차 제조업 전문가 모드</span>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="expert-mode" class="sr-only peer" checked>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-                        
-                        <!-- 번역 스타일 선택 -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">번역 스타일</label>
-                            <select id="translation-style" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">기본 스타일</option>
-                                <option value="business">비즈니스 (전문적)</option>
-                                <option value="formal">격식체 (공식적)</option>
-                                <option value="academic">학술적 (정확한)</option>
-                                <option value="literal">직역 (원문 충실)</option>
-                                <option value="creative">창의적 (자연스러운)</option>
-                                <option value="casual">일상체 (친근한)</option>
-                            </select>
-                        </div>
-                        
-                        <!-- 커스텀 프롬프트 -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">추가 번역 지침 (선택사항)</label>
-                            <textarea id="custom-prompt" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none" placeholder="예: 기술 문서용으로 번역해주세요, 초보자도 이해할 수 있게 설명을 추가해주세요 등"></textarea>
-                            <div class="flex justify-between items-center mt-1">
-                                <span class="text-xs text-gray-500">추가적인 번역 요구사항을 입력하세요</span>
-                                <span id="prompt-counter" class="text-xs text-gray-500">0/500</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -213,6 +169,50 @@
                 <div class="panel-body output-area">
                     <div id="korean-output-content" class="space-y-2"></div>
                      <div id="korean-loader" class="loader-container"><div class="loader"></div></div>
+                </div>
+            </div>
+            
+            <!-- 전문가 모드 및 스타일 설정 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-cogs mr-2 text-purple-500"></i>전문가 번역 설정</h3>
+                </div>
+                <div class="panel-body">
+                    <!-- 전문가 모드 토글 -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-industry mr-2 text-blue-500"></i>
+                            <span class="font-medium">자동차 제조업 전문가 모드</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="expert-mode" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    
+                    <!-- 번역 스타일 선택 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">번역 스타일</label>
+                        <select id="translation-style" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">기본 스타일</option>
+                            <option value="business">비즈니스 (전문적)</option>
+                            <option value="formal">격식체 (공식적)</option>
+                            <option value="academic">학술적 (정확한)</option>
+                            <option value="literal">직역 (원문 충실)</option>
+                            <option value="creative">창의적 (자연스러운)</option>
+                            <option value="casual">일상체 (친근한)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 커스텀 프롬프트 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">추가 번역 지침 (선택사항)</label>
+                        <textarea id="custom-prompt" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none" placeholder="예: 기술 문서용으로 번역해주세요, 초보자도 이해할 수 있게 설명을 추가해주세요 등"></textarea>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-xs text-gray-500">추가적인 번역 요구사항을 입력하세요</span>
+                            <span id="prompt-counter" class="text-xs text-gray-500">0/500</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -460,9 +460,9 @@
 
     translateBtn.addEventListener('click', translateText);
     
-    // Enter 키로 번역 실행 (Ctrl+Enter)
+    // Enter 키로 번역 실행
     sourceTextInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.ctrlKey) {
+        if (e.key === 'Enter') {
             e.preventDefault();
             translateText();
         }
